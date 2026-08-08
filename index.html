@@ -43,6 +43,19 @@
                     <span class="badge">Step 1</span>
                 </div>
                 <div class="card-body">
+                    <!-- Bookmarklet Tip Banner -->
+                    <div class="bookmarklet-tip">
+                        <i class="ti ti-bulb-filled tip-icon"></i>
+                        <div>
+                            <strong>Instant Bookmarklet Extractor:</strong> 
+                            Drag this button to your bookmarks bar: 
+                            <a id="bookmarklet-link" class="bookmarklet-btn" href="#" onclick="return false;">
+                                <i class="ti ti-link"></i> <span>Extract Screener</span>
+                            </a>
+                            Then click it while viewing any table on Screener.in to extract data instantly without copy-pasting!
+                        </div>
+                    </div>
+
                     <div class="textarea-wrapper">
                         <textarea id="html-input" placeholder="Right click on screener.in results page, view page source (Cmd+U / Ctrl+U), copy everything, and paste it here..."></textarea>
                         <div class="textarea-overlay" id="drag-overlay">
@@ -135,6 +148,10 @@
                             <i class="ti ti-adjustments-horizontal"></i>
                             <span>Columns</span>
                         </button>
+                        <button id="add-indicator-btn" class="btn btn-secondary" title="Create custom indicator column">
+                            <i class="ti ti-calculator"></i>
+                            <span>Add Indicator</span>
+                        </button>
                         <button id="copy-btn" class="btn btn-accent">
                             <i class="ti ti-copy"></i>
                             <span>Copy CSV</span>
@@ -188,6 +205,47 @@
                 </div>
             </section>
         </main>
+    </div>
+
+    <!-- Custom Indicator Modal -->
+    <div id="indicator-modal" class="modal-overlay hidden">
+        <div class="modal-content card">
+            <div class="modal-header">
+                <div class="card-title">
+                    <i class="ti ti-calculator"></i>
+                    <h2>Create Custom Indicator</h2>
+                </div>
+                <button id="close-modal-btn" class="btn-icon" title="Close Modal">
+                    <i class="ti ti-x"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="indicator-name" class="form-label">Indicator Name</label>
+                    <input type="text" id="indicator-name" class="form-input" placeholder="e.g. ROIC to PE Ratio" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Formula Editor</label>
+                    <p class="form-hint">Type math operations (+, -, *, /, (, )) and click columns below to insert them.</p>
+                    <textarea id="indicator-formula" class="form-textarea" placeholder="e.g. ({ROIC} / {PE}) * 100" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Available Columns (Click to insert)</label>
+                    <div id="modal-columns-list" class="modal-columns-list">
+                        <!-- Filled dynamically -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="save-indicator-btn" class="btn btn-primary">
+                    <i class="ti ti-circle-plus"></i>
+                    <span>Create Indicator</span>
+                </button>
+                <button id="cancel-indicator-btn" class="btn btn-secondary">
+                    <span>Cancel</span>
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Notification Toast -->

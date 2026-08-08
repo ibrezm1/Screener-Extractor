@@ -47,7 +47,7 @@ async function openScanX(screenerUrl) {
     };
     
     try {
-        const response = await fetch('https://scanx-search.dhan.co/Search/api/Search/Scrip', {
+        const response = await fetch('https://express-js-on-vercel-sage-beta-50.vercel.app/api/proxy?url=https://scanx-search.dhan.co/Search/api/Search/Scrip', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

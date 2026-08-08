@@ -160,6 +160,15 @@ function setupEventListeners() {
             showToast('Data received automatically from bookmarklet!', 'success');
         }
     });
+
+    // Paste Section Collapsible Actions
+    const pasteHeader = document.getElementById('paste-header');
+    const pasteSection = document.getElementById('paste-section');
+    if (pasteHeader && pasteSection) {
+        pasteHeader.addEventListener('click', () => {
+            pasteSection.classList.toggle('collapsed');
+        });
+    }
 }
 
 /* ==========================================

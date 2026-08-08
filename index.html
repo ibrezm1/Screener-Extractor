@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screener Extractor - Dynamic CSV Exporter</title>
+    <!-- Modern Typography: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Tabler Icons (Premium looking svg icons) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dark-theme">
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <i class="ti ti-database-share logo-icon"></i>
+                <div>
+                    <h1>Screener Extractor</h1>
+                    <p class="subtitle">Extract, merge, and export tabular data from screener.in source code</p>
+                </div>
+            </div>
+            <div class="theme-toggle">
+                <button id="theme-btn" title="Toggle Light/Dark Mode" class="btn-icon">
+                    <i class="ti ti-sun"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="app-workspace">
+            
+            <!-- Paste & Options Section -->
+            <section class="control-panel card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="ti ti-clipboard-text"></i>
+                        <h2>Paste HTML Source</h2>
+                    </div>
+                    <span class="badge">Step 1</span>
+                </div>
+                <div class="card-body">
+                    <div class="textarea-wrapper">
+                        <textarea id="html-input" placeholder="Right click on screener.in results page, view page source (Cmd+U / Ctrl+U), copy everything, and paste it here..."></textarea>
+                        <div class="textarea-overlay" id="drag-overlay">
+                            <i class="ti ti-cloud-upload"></i>
+                            <p>Drop HTML file here</p>
+                        </div>
+                    </div>
+                    
+                    <div class="options-bar">
+                        <div class="option-group">
+                            <label for="dedup-strategy">
+                                <i class="ti ti-copy-off"></i> Duplicate Check:
+                            </label>
+                            <select id="dedup-strategy">
+                                <option value="skip" selected>Skip existing companies</option>
+                                <option value="overwrite">Overwrite with new data</option>
+                                <option value="keep">Keep all (allow duplicates)</option>
+                            </select>
+                        </div>
+                        
+                        <div class="option-group">
+                            <label for="dedup-key">
+                                <i class="ti ti-key"></i> Unique Key:
+                            </label>
+                            <select id="dedup-key">
+                                <option value="name" selected>Company Name</option>
+                                <option value="url">Company URL Link</option>
+                            </select>
+                        </div>
+
+                        <div class="button-group">
+                            <button id="extract-btn" class="btn btn-primary">
+                                <i class="ti ti-analyze"></i>
+                                <span>Extract Data</span>
+                            </button>
+                            <button id="clear-input-btn" class="btn btn-secondary" title="Clear Paste Area">
+                                <i class="ti ti-trash-x"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Statistics Grid -->
+            <section class="stats-grid">
+                <div class="stat-card card">
+                    <div class="stat-icon companies-icon">
+                        <i class="ti ti-building-factory"></i>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-label">Companies Extracted</span>
+                        <span class="stat-value" id="stat-companies">0</span>
+                    </div>
+                </div>
+                
+                <div class="stat-card card">
+                    <div class="stat-icon columns-icon">
+                        <i class="ti ti-columns"></i>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-label">Data Fields (Columns)</span>
+                        <span class="stat-value" id="stat-columns">0</span>
+                    </div>
+                </div>
+
+                <div class="stat-card card">
+                    <div class="stat-icon pages-icon">
+                        <i class="ti ti-files"></i>
+                    </div>
+                    <div class="stat-content">
+                        <span class="stat-label">Pasted Pages / Batches</span>
+                        <span class="stat-value" id="stat-batches">0</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Table View & Export Section -->
+            <section class="data-panel card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <i class="ti ti-table"></i>
+                        <h2>Accumulated Data Table</h2>
+                    </div>
+                    <div class="table-actions">
+                        <div class="search-box">
+                            <i class="ti ti-search"></i>
+                            <input type="text" id="table-search" placeholder="Search companies...">
+                        </div>
+                        <button id="column-filter-btn" class="btn btn-secondary" title="Toggle visible columns">
+                            <i class="ti ti-adjustments-horizontal"></i>
+                            <span>Columns</span>
+                        </button>
+                        <button id="copy-btn" class="btn btn-accent">
+                            <i class="ti ti-copy"></i>
+                            <span>Copy CSV</span>
+                        </button>
+                        <button id="download-btn" class="btn btn-success">
+                            <i class="ti ti-download"></i>
+                            <span>Download CSV</span>
+                        </button>
+                        <button id="clear-table-btn" class="btn btn-danger" title="Clear all parsed data">
+                            <i class="ti ti-trash"></i>
+                            <span>Clear All</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Column Dropdown Manager -->
+                <div id="column-selector-dropdown" class="column-selector-dropdown hidden">
+                    <div class="dropdown-header">
+                        <h3>Visible Columns</h3>
+                        <button id="select-all-columns" class="btn-link">Select All</button>
+                        <span class="divider">|</span>
+                        <button id="deselect-all-columns" class="btn-link">Deselect All</button>
+                    </div>
+                    <div class="dropdown-list" id="columns-checkbox-list">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+                </div>
+
+                <div class="card-body no-padding table-scrollable">
+                    <table class="extractor-table" id="data-table">
+                        <thead>
+                            <tr id="table-header-row">
+                                <th class="col-fixed-sno">S.No.</th>
+                                <th class="col-fixed-name">Company Name</th>
+                                <!-- Headers dynamically inserted here -->
+                                <th class="col-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body">
+                            <tr class="empty-state-row">
+                                <td colspan="3" class="empty-state">
+                                    <div class="empty-state-content">
+                                        <i class="ti ti-database-import"></i>
+                                        <h3>No Data Extracted Yet</h3>
+                                        <p>Paste the Screener HTML source code in the area above and click "Extract Data". You can add multiple pages consecutively.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

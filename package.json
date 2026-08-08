@@ -1,0 +1,15 @@
+{
+  "name": "screener-extractor",
+  "version": "1.0.0",
+  "description": "Extract, merge, and export tabular data from screener.in source code",
+  "main": "index.html",
+  "scripts": {
+    "deploy": "gh-pages -d ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "gh-pages": "^6.1.1"
+  }
+}

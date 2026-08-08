@@ -1182,3 +1182,70 @@ th.col-fixed-name {
 .card.collapsed .card-body {
     display: none !important;
 }
+
+/* AI Dropdown Wrapper */
+.ai-dropdown-wrapper {
+    position: relative;
+    display: inline-flex;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.ai-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: color var(--transition-fast), transform var(--transition-fast);
+}
+
+.ai-btn:hover {
+    color: #a855f7; /* Purple for AI sparkles */
+    transform: scale(1.15);
+}
+
+.ai-btn i {
+    font-size: 1.1rem;
+}
+
+.ai-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
+    z-index: 50; /* Ensure it stays on top of sticky columns */
+    min-width: 180px;
+    display: flex;
+    flex-direction: column;
+    padding: 0.25rem;
+}
+
+.ai-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.ai-dropdown-item:hover {
+    background-color: var(--bg-input);
+    color: var(--text-primary);
+}
+
+.ai-dropdown-item i {
+    font-size: 0.9rem;
+}

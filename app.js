@@ -173,6 +173,25 @@ function setupEventListeners() {
     } else {
         console.error('Collapsible panel elements not found in DOM!');
     }
+
+    // Toggle AI dropdown menus
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.ai-btn');
+        if (btn) {
+            e.stopPropagation();
+            const menu = btn.nextElementSibling;
+            document.querySelectorAll('.ai-dropdown-menu').forEach(m => {
+                if (m !== menu) m.classList.add('hidden');
+            });
+            menu.classList.toggle('hidden');
+            return;
+        }
+        
+        // Clicked elsewhere: close all AI dropdown menus
+        document.querySelectorAll('.ai-dropdown-menu').forEach(m => {
+            m.classList.add('hidden');
+        });
+    });
 }
 
 /* ==========================================
@@ -228,6 +247,23 @@ function getGoogleFinanceUrl(screenerUrl) {
         return `https://www.google.com/finance/beta/quote/${code}:NSE`;
     }
     return '';
+}
+
+function generateAIPrompt(company) {
+    let prompt = `Analyze this company: ${company.name}\n`;
+    if (company.url) {
+        prompt += `Screener URL: ${company.url}\n`;
+    }
+    
+    prompt += `\nFinancial Metrics:\n`;
+    Object.entries(company.data).forEach(([key, val]) => {
+        if (val !== undefined && val !== null && val !== '') {
+            prompt += `- ${key}: ${val}\n`;
+        }
+    });
+    
+    prompt += `\nProvide a detailed financial analysis of this company. Search for recent earnings, news, valuations, and market trends to assess its investment potential, drivers, and risks.`;
+    return encodeURIComponent(prompt);
 }
 
 function parseScreenerHTML(htmlString) {
@@ -683,6 +719,37 @@ function renderTable() {
                 gfAnchor.innerHTML = '<i class="ti ti-chart-line"></i>';
                 tdName.appendChild(gfAnchor);
             }
+            
+            // Add AI dropdown
+            const promptStr = generateAIPrompt(comp);
+            const aiWrapper = document.createElement('div');
+            aiWrapper.className = 'ai-dropdown-wrapper';
+            
+            const aiBtn = document.createElement('button');
+            aiBtn.className = 'ai-btn';
+            aiBtn.title = `AI analysis for ${comp.name}`;
+            aiBtn.innerHTML = '<i class="ti ti-sparkles"></i>';
+            aiWrapper.appendChild(aiBtn);
+            
+            const aiMenu = document.createElement('div');
+            aiMenu.className = 'ai-dropdown-menu hidden';
+            
+            const chatGptLink = document.createElement('a');
+            chatGptLink.href = `https://chatgpt.com/?q=${promptStr}`;
+            chatGptLink.target = '_blank';
+            chatGptLink.className = 'ai-dropdown-item';
+            chatGptLink.innerHTML = '<i class="ti ti-brain"></i> ChatGPT Analysis';
+            aiMenu.appendChild(chatGptLink);
+            
+            const perplexityLink = document.createElement('a');
+            perplexityLink.href = `https://www.perplexity.ai/?q=${promptStr}`;
+            perplexityLink.target = '_blank';
+            perplexityLink.className = 'ai-dropdown-item';
+            perplexityLink.innerHTML = '<i class="ti ti-search"></i> Perplexity Search';
+            aiMenu.appendChild(perplexityLink);
+            
+            aiWrapper.appendChild(aiMenu);
+            tdName.appendChild(aiWrapper);
         } else {
             tdName.textContent = comp.name;
         }

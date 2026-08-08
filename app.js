@@ -180,16 +180,33 @@ function setupEventListeners() {
         if (btn) {
             e.stopPropagation();
             const menu = btn.nextElementSibling;
+            const cell = btn.closest('.col-fixed-name');
+            
+            // Close all other open AI menus and remove active-dropdown class
             document.querySelectorAll('.ai-dropdown-menu').forEach(m => {
-                if (m !== menu) m.classList.add('hidden');
+                if (m !== menu) {
+                    m.classList.add('hidden');
+                    const otherCell = m.closest('.col-fixed-name');
+                    if (otherCell) otherCell.classList.remove('active-dropdown');
+                }
             });
-            menu.classList.toggle('hidden');
+            
+            const isHidden = menu.classList.toggle('hidden');
+            if (cell) {
+                if (!isHidden) {
+                    cell.classList.add('active-dropdown');
+                } else {
+                    cell.classList.remove('active-dropdown');
+                }
+            }
             return;
         }
         
         // Clicked elsewhere: close all AI dropdown menus
         document.querySelectorAll('.ai-dropdown-menu').forEach(m => {
             m.classList.add('hidden');
+            const cell = m.closest('.col-fixed-name');
+            if (cell) cell.classList.remove('active-dropdown');
         });
     });
 }
@@ -747,6 +764,20 @@ function renderTable() {
             perplexityLink.className = 'ai-dropdown-item';
             perplexityLink.innerHTML = '<i class="ti ti-search"></i> Perplexity Search';
             aiMenu.appendChild(perplexityLink);
+            
+            const mistralLink = document.createElement('a');
+            mistralLink.href = `https://chat.mistral.ai/chat?q=${promptStr}`;
+            mistralLink.target = '_blank';
+            mistralLink.className = 'ai-dropdown-item';
+            mistralLink.innerHTML = '<i class="ti ti-message-chatbot"></i> Mistral AI Chat';
+            aiMenu.appendChild(mistralLink);
+            
+            const googleLink = document.createElement('a');
+            googleLink.href = `https://www.google.com/search?q=${promptStr}`;
+            googleLink.target = '_blank';
+            googleLink.className = 'ai-dropdown-item';
+            googleLink.innerHTML = '<i class="ti ti-brand-google"></i> Google Web Search';
+            aiMenu.appendChild(googleLink);
             
             aiWrapper.appendChild(aiMenu);
             tdName.appendChild(aiWrapper);

@@ -1273,3 +1273,76 @@ th.col-fixed-name {
 .scanx-link i {
     font-size: 1.1rem;
 }
+
+/* Research Dropdown Wrapper */
+.research-dropdown-wrapper {
+    position: relative;
+    display: inline-flex;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.research-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: color var(--transition-fast), transform var(--transition-fast);
+}
+
+.research-btn:hover {
+    color: #3b82f6; /* Bright blue for charts/research */
+    transform: scale(1.15);
+}
+
+.research-btn i {
+    font-size: 1.1rem;
+}
+
+.research-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
+    z-index: 50; /* Ensure it stays on top of sticky columns */
+    min-width: 180px;
+    display: flex;
+    flex-direction: column;
+    padding: 0.25rem;
+}
+
+.research-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    transition: background var(--transition-fast), color var(--transition-fast);
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+}
+
+.research-dropdown-item:hover {
+    background-color: var(--bg-input);
+    color: var(--text-primary);
+}
+
+.research-dropdown-item i {
+    font-size: 0.9rem;
+}
+

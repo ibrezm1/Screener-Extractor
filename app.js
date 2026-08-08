@@ -176,39 +176,45 @@ function setupEventListeners() {
 
 
 
-    // Toggle AI dropdown menus
+    // Toggle AI and Research dropdown menus
     document.addEventListener('click', (e) => {
-        const btn = e.target.closest('.ai-btn');
-        if (btn) {
+        const aiBtn = e.target.closest('.ai-btn');
+        const researchBtn = e.target.closest('.research-btn');
+        
+        if (aiBtn || researchBtn) {
             e.stopPropagation();
+            const btn = aiBtn || researchBtn;
             const menu = btn.nextElementSibling;
-            const cell = btn.closest('.col-fixed-name');
             
-            // Close all other open AI menus and remove active-dropdown class
-            document.querySelectorAll('.ai-dropdown-menu').forEach(m => {
+            // Close all other open menus
+            document.querySelectorAll('.ai-dropdown-menu, .research-dropdown-menu').forEach(m => {
                 if (m !== menu) {
                     m.classList.add('hidden');
-                    const otherCell = m.closest('.col-fixed-name');
-                    if (otherCell) otherCell.classList.remove('active-dropdown');
                 }
             });
             
+            // Toggle current menu
             const isHidden = menu.classList.toggle('hidden');
-            if (cell) {
-                if (!isHidden) {
-                    cell.classList.add('active-dropdown');
+            
+            // Manage active-dropdown class for styling / stack order on parent cells
+            document.querySelectorAll('.col-fixed-name').forEach(c => {
+                const hasVisibleMenu = Array.from(c.querySelectorAll('.ai-dropdown-menu, .research-dropdown-menu'))
+                    .some(m => !m.classList.contains('hidden'));
+                if (hasVisibleMenu) {
+                    c.classList.add('active-dropdown');
                 } else {
-                    cell.classList.remove('active-dropdown');
+                    c.classList.remove('active-dropdown');
                 }
-            }
+            });
             return;
         }
         
-        // Clicked elsewhere: close all AI dropdown menus
-        document.querySelectorAll('.ai-dropdown-menu').forEach(m => {
+        // Clicked elsewhere: close all dropdown menus
+        document.querySelectorAll('.ai-dropdown-menu, .research-dropdown-menu').forEach(m => {
             m.classList.add('hidden');
-            const cell = m.closest('.col-fixed-name');
-            if (cell) cell.classList.remove('active-dropdown');
+        });
+        document.querySelectorAll('.col-fixed-name').forEach(c => {
+            c.classList.remove('active-dropdown');
         });
     });
 }
@@ -335,6 +341,58 @@ async function openScanX(screenerUrl) {
         console.error('ScanX search error, using Google Search fallback...', err);
         // Fallback: search on google for the company scanx page
         window.open(`https://www.google.com/search?q=site:scanx.trade+${code}`, '_blank');
+    }
+}
+
+async function openNSE(screenerUrl, companyName) {
+    // Extract company code
+    const match = screenerUrl.match(/\/company\/([A-Z0-9_\-]+)/i);
+    if (!match || !match[1]) {
+        showToast('Could not extract company code for NSE search', 'danger');
+        return;
+    }
+    const code = match[1].toUpperCase();
+    
+    // If it's a numeric code, it's BSE-only (e.g. 511644). Use companyName for searching.
+    const isNumeric = /^\d+$/.test(code);
+    const searchTerm = isNumeric ? companyName : code;
+    
+    showToast(`Searching NSE for "${searchTerm}"...`, 'info');
+    
+    try {
+        const targetUrl = `https://www.nseindia.com/api/NextApi/globalSearch/equity?symbol=${encodeURIComponent(searchTerm)}`;
+        const response = await fetch(`https://express-js-on-vercel-sage-beta-50.vercel.app/api/proxy?url=${encodeURIComponent(targetUrl)}`);
+        const result = await response.json();
+        
+        if (result && result.data && result.data.length > 0) {
+            let matchItem = null;
+            if (isNumeric) {
+                // Look for closest match in company names
+                const lowerName = companyName.toLowerCase();
+                matchItem = result.data.find(item => 
+                    item.companyName.toLowerCase().includes(lowerName) ||
+                    lowerName.includes(item.companyName.toLowerCase())
+                ) || result.data[0];
+            } else {
+                // Try exact symbol match first
+                matchItem = result.data.find(item => item.symbol.toUpperCase() === code) || result.data[0];
+            }
+            
+            if (matchItem && matchItem.webUrl) {
+                // The webUrl is like "/get-quote/equity/SAVY/Savy-Infra-and-Logistics-Limited"
+                const webUrl = matchItem.webUrl;
+                const fullUrl = webUrl.startsWith('http') ? webUrl : `https://www.nseindia.com${webUrl}`;
+                window.open(fullUrl, '_blank');
+                return;
+            }
+        }
+        
+        // Fallback if scrip not found on NSE
+        showToast(`Company "${searchTerm}" not found on NSE. Using Google Search fallback...`, 'warning');
+        window.open(`https://www.google.com/search?q=site:nseindia.com+${encodeURIComponent(searchTerm)}`, '_blank');
+    } catch (err) {
+        console.error('NSE search error, using Google Search fallback...', err);
+        window.open(`https://www.google.com/search?q=site:nseindia.com+${encodeURIComponent(searchTerm)}`, '_blank');
     }
 }
 
@@ -792,18 +850,51 @@ function renderTable() {
                 tdName.appendChild(gfAnchor);
             }
             
-            // Add ScanX link
-            const scanxAnchor = document.createElement('a');
-            scanxAnchor.href = '#';
-            scanxAnchor.className = 'scanx-link';
-            scanxAnchor.title = `Search ${comp.name} on ScanX`;
-            scanxAnchor.innerHTML = '<i class="ti ti-radar"></i>';
-            scanxAnchor.addEventListener('click', (e) => {
+            // Add Research / Charts Dropdown
+            const researchWrapper = document.createElement('div');
+            researchWrapper.className = 'research-dropdown-wrapper';
+            
+            const researchBtn = document.createElement('button');
+            researchBtn.className = 'research-btn';
+            researchBtn.title = `Charts & Research for ${comp.name}`;
+            researchBtn.innerHTML = '<i class="ti ti-chart-bar"></i>';
+            researchWrapper.appendChild(researchBtn);
+            
+            const researchMenu = document.createElement('div');
+            researchMenu.className = 'research-dropdown-menu hidden';
+            
+            // ScanX option
+            const scanxOpt = document.createElement('button');
+            scanxOpt.type = 'button';
+            scanxOpt.className = 'research-dropdown-item';
+            scanxOpt.innerHTML = '<i class="ti ti-radar"></i> ScanX Search';
+            scanxOpt.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                researchMenu.classList.add('hidden');
+                const cell = researchWrapper.closest('.col-fixed-name');
+                if (cell) cell.classList.remove('active-dropdown');
                 openScanX(comp.url);
             });
-            tdName.appendChild(scanxAnchor);
+            researchMenu.appendChild(scanxOpt);
+            
+            // NSE option
+            const nseOpt = document.createElement('button');
+            nseOpt.type = 'button';
+            nseOpt.className = 'research-dropdown-item';
+            nseOpt.innerHTML = '<i class="ti ti-trending-up"></i> NSE India Search';
+            nseOpt.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                researchMenu.classList.add('hidden');
+                const cell = researchWrapper.closest('.col-fixed-name');
+                if (cell) cell.classList.remove('active-dropdown');
+                openNSE(comp.url, comp.name);
+            });
+            researchMenu.appendChild(nseOpt);
+            
+            researchWrapper.appendChild(researchMenu);
+            tdName.appendChild(researchWrapper);
             
             // Add AI dropdown
             const promptStr = generateAIPrompt(comp);

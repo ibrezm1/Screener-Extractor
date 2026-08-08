@@ -1254,3 +1254,22 @@ th.col-fixed-name {
 .col-fixed-name.active-dropdown {
     z-index: 20 !important;
 }
+
+.scanx-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    margin-left: 8px;
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    transition: color var(--transition-fast), transform var(--transition-fast);
+}
+
+.scanx-link:hover {
+    color: #eab308; /* Bright yellow/gold for radar scan theme */
+    transform: scale(1.15);
+}
+
+.scanx-link i {
+    font-size: 1.1rem;
+}

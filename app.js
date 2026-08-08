@@ -219,7 +219,13 @@ function getGoogleFinanceUrl(screenerUrl) {
     // Extract company code from Screener URL (e.g. /company/GMBREW/ -> GMBREW)
     const match = screenerUrl.match(/\/company\/([A-Z0-9_\-]+)/i);
     if (match && match[1]) {
-        return `https://www.google.com/finance/beta/quote/${match[1].toUpperCase()}:NSE`;
+        const code = match[1].toUpperCase();
+        // If the code is purely numeric (e.g., 511644), it belongs to BSE (BOM)
+        if (/^\d+$/.test(code)) {
+            return `https://www.google.com/finance/beta/quote/${code}:BOM`;
+        }
+        // Otherwise it is NSE
+        return `https://www.google.com/finance/beta/quote/${code}:NSE`;
     }
     return '';
 }

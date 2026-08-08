@@ -285,6 +285,59 @@ function generateAIPrompt(company) {
     return encodeURIComponent(prompt);
 }
 
+async function openScanX(screenerUrl) {
+    // Extract company code
+    const match = screenerUrl.match(/\/company\/([A-Z0-9_\-]+)/i);
+    if (!match || !match[1]) {
+        showToast('Could not extract company code for ScanX search', 'danger');
+        return;
+    }
+    const code = match[1].toUpperCase();
+    
+    showToast(`Searching ScanX for "${code}"...`, 'info');
+    
+    const payload = {
+        UserId: "Dhanweb",
+        UserType: "C",
+        Source: "X",
+        Data: JSON.stringify({
+            inst: "EQUITY",
+            searchterm: code,
+            exch: "",
+            optionflag: false
+        }),
+        broker_code: "DHN1804"
+    };
+    
+    try {
+        const response = await fetch('https://scanx-search.dhan.co/Search/api/Search/Scrip', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json, text/plain, */*'
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        const result = await response.json();
+        if (result && result.code === "0" && result.data && result.data.length > 0) {
+            const seoSymbol = result.data[0].Seo_symbol_s;
+            if (seoSymbol) {
+                window.open(`https://scanx.trade/company/${seoSymbol}`, '_blank');
+                return;
+            }
+        }
+        
+        // Fallback if scrip not found on Dhan
+        showToast(`Company "${code}" not found on ScanX. Using Google Search fallback...`, 'warning');
+        window.open(`https://www.google.com/search?q=site:scanx.trade+${code}`, '_blank');
+    } catch (err) {
+        console.error('ScanX search error, using Google Search fallback...', err);
+        // Fallback: search on google for the company scanx page
+        window.open(`https://www.google.com/search?q=site:scanx.trade+${code}`, '_blank');
+    }
+}
+
 function parseScreenerHTML(htmlString) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlString, 'text/html');
@@ -738,6 +791,19 @@ function renderTable() {
                 gfAnchor.innerHTML = '<i class="ti ti-chart-line"></i>';
                 tdName.appendChild(gfAnchor);
             }
+            
+            // Add ScanX link
+            const scanxAnchor = document.createElement('a');
+            scanxAnchor.href = '#';
+            scanxAnchor.className = 'scanx-link';
+            scanxAnchor.title = `Search ${comp.name} on ScanX`;
+            scanxAnchor.innerHTML = '<i class="ti ti-radar"></i>';
+            scanxAnchor.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openScanX(comp.url);
+            });
+            tdName.appendChild(scanxAnchor);
             
             // Add AI dropdown
             const promptStr = generateAIPrompt(comp);

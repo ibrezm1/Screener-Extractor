@@ -1249,3 +1249,8 @@ th.col-fixed-name {
 .ai-dropdown-item i {
     font-size: 0.9rem;
 }
+
+/* Stacking context boost when AI dropdown is active */
+.col-fixed-name.active-dropdown {
+    z-index: 20 !important;
+}

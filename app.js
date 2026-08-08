@@ -174,14 +174,7 @@ function setupEventListeners() {
         console.error('Collapsible panel elements not found in DOM!');
     }
 
-    // Stats Section Collapsible Actions
-    const statsHeader = document.getElementById('stats-header');
-    const statsSection = document.getElementById('stats-section');
-    if (statsHeader && statsSection) {
-        statsHeader.addEventListener('click', () => {
-            statsSection.classList.toggle('collapsed');
-        });
-    }
+
 
     // Toggle AI dropdown menus
     document.addEventListener('click', (e) => {

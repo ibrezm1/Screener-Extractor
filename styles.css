@@ -1167,3 +1167,18 @@ th.col-fixed-name {
 .bookmarklet-btn-secondary:hover {
     background-color: var(--secondary-hover) !important;
 }
+
+/* Collapsible Panel Styling */
+.collapse-icon {
+    font-size: 1.15rem;
+    color: var(--text-secondary);
+    transition: transform var(--transition-normal);
+}
+
+.card.collapsed .collapse-icon {
+    transform: rotate(-90deg); /* Points right when collapsed */
+}
+
+.card.collapsed .card-body {
+    display: none !important;
+}

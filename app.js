@@ -165,9 +165,13 @@ function setupEventListeners() {
     const pasteHeader = document.getElementById('paste-header');
     const pasteSection = document.getElementById('paste-section');
     if (pasteHeader && pasteSection) {
+        console.log('Collapsible panel initialized successfully');
         pasteHeader.addEventListener('click', () => {
+            console.log('Paste header clicked. Toggling collapsed class.');
             pasteSection.classList.toggle('collapsed');
         });
+    } else {
+        console.error('Collapsible panel elements not found in DOM!');
     }
 }
 

@@ -5,6 +5,7 @@ let accumulatedCompanies = [];
 let allColumns = [];
 let visibleColumns = new Set();
 let batchesCount = 0;
+let customColumns = [];
 
 // Sorting state
 let currentSortColumn = null;
@@ -29,6 +30,16 @@ const clearTableBtn = document.getElementById('clear-table-btn');
 const tableBody = document.getElementById('table-body');
 const tableHeaderRow = document.getElementById('table-header-row');
 
+// Custom Indicator Modal Elements
+const indicatorModal = document.getElementById('indicator-modal');
+const addIndicatorBtn = document.getElementById('add-indicator-btn');
+const closeModalBtn = document.getElementById('close-modal-btn');
+const cancelIndicatorBtn = document.getElementById('cancel-indicator-btn');
+const saveIndicatorBtn = document.getElementById('save-indicator-btn');
+const indicatorNameInput = document.getElementById('indicator-name');
+const indicatorFormulaInput = document.getElementById('indicator-formula');
+const modalColumnsList = document.getElementById('modal-columns-list');
+
 // Stats elements
 const statCompanies = document.getElementById('stat-companies');
 const statColumns = document.getElementById('stat-columns');
@@ -44,6 +55,16 @@ document.addEventListener('DOMContentLoaded', () => {
     loadTheme();
     loadFromLocalStorage();
     setupEventListeners();
+    initBookmarklet();
+    
+    // Notify opener that we are ready to receive data
+    if (window.opener) {
+        try {
+            window.opener.postMessage({ type: 'READY' }, '*');
+        } catch (e) {
+            // Ignore potential cross-origin issues
+        }
+    }
 });
 
 /* ==========================================
@@ -124,6 +145,21 @@ function setupEventListeners() {
     copyBtn.addEventListener('click', copyCSVToClipboard);
     downloadBtn.addEventListener('click', downloadCSV);
     clearTableBtn.addEventListener('click', confirmClearTable);
+
+    // Custom Indicator Actions
+    addIndicatorBtn.addEventListener('click', openIndicatorModal);
+    closeModalBtn.addEventListener('click', closeIndicatorModal);
+    cancelIndicatorBtn.addEventListener('click', closeIndicatorModal);
+    saveIndicatorBtn.addEventListener('click', saveCustomIndicator);
+
+    // Listen for incoming Screener HTML from bookmarklet
+    window.addEventListener('message', (e) => {
+        if (e.data && e.data.type === 'SCREENER_HTML') {
+            htmlInput.value = e.data.html;
+            handleExtraction();
+            showToast('Data received automatically from bookmarklet!', 'success');
+        }
+    });
 }
 
 /* ==========================================
@@ -163,6 +199,16 @@ function loadTheme() {
 function cleanText(text) {
     if (!text) return "";
     return text.replace(/\s+/g, ' ').trim();
+}
+
+function getGoogleFinanceUrl(screenerUrl) {
+    if (!screenerUrl) return '';
+    // Extract company code from Screener URL (e.g. /company/GMBREW/ -> GMBREW)
+    const match = screenerUrl.match(/\/company\/([A-Z0-9_\-]+)/i);
+    if (match && match[1]) {
+        return `https://www.google.com/finance/beta/quote/${match[1].toUpperCase()}:NSE`;
+    }
+    return '';
 }
 
 function parseScreenerHTML(htmlString) {
@@ -367,6 +413,7 @@ function handleExtraction() {
    COLUMNS MANAGEMENT
    ========================================== */
 function updateActiveColumns(newHeaders = []) {
+    computeCustomColumns();
     const colSet = new Set();
     
     // Find all metrics columns present in current companies
@@ -408,6 +455,9 @@ function updateColumnCheckboxes() {
         const label = document.createElement('label');
         label.className = 'dropdown-item';
         
+        const leftWrap = document.createElement('div');
+        leftWrap.className = 'dropdown-item-left';
+        
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = visibleColumns.has(col);
@@ -425,8 +475,37 @@ function updateColumnCheckboxes() {
         const span = document.createElement('span');
         span.textContent = col;
         
-        label.appendChild(checkbox);
-        label.appendChild(span);
+        leftWrap.appendChild(checkbox);
+        leftWrap.appendChild(span);
+        label.appendChild(leftWrap);
+        
+        const isCustom = customColumns.some(cc => cc.name === col);
+        if (isCustom) {
+            label.classList.add('custom-col-item');
+            
+            const rightWrap = document.createElement('div');
+            rightWrap.className = 'dropdown-item-right';
+            
+            const badge = document.createElement('span');
+            badge.className = 'col-badge';
+            badge.textContent = 'Custom';
+            rightWrap.appendChild(badge);
+            
+            const deleteIcon = document.createElement('button');
+            deleteIcon.className = 'btn-col-delete';
+            deleteIcon.title = 'Delete custom column';
+            deleteIcon.innerHTML = '<i class="ti ti-trash"></i>';
+            deleteIcon.addEventListener('click', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                if (confirm(`Are you sure you want to delete the custom column "${col}"?`)) {
+                    deleteCustomColumn(col);
+                }
+            });
+            rightWrap.appendChild(deleteIcon);
+            label.appendChild(rightWrap);
+        }
+        
         columnsCheckboxList.appendChild(label);
     });
 }
@@ -574,6 +653,17 @@ function renderTable() {
             anchor.className = 'company-link';
             anchor.textContent = comp.name;
             tdName.appendChild(anchor);
+            
+            const gfUrl = getGoogleFinanceUrl(comp.url);
+            if (gfUrl) {
+                const gfAnchor = document.createElement('a');
+                gfAnchor.href = gfUrl;
+                gfAnchor.target = '_blank';
+                gfAnchor.className = 'finance-link';
+                gfAnchor.title = `Open ${comp.name} in Google Finance`;
+                gfAnchor.innerHTML = '<i class="ti ti-chart-line"></i>';
+                tdName.appendChild(gfAnchor);
+            }
         } else {
             tdName.textContent = comp.name;
         }
@@ -745,15 +835,21 @@ function saveToLocalStorage() {
     localStorage.setItem('screener_companies', JSON.stringify(accumulatedCompanies));
     localStorage.setItem('screener_visible_cols', JSON.stringify(Array.from(visibleColumns)));
     localStorage.setItem('screener_batches', batchesCount);
+    localStorage.setItem('screener_custom_cols', JSON.stringify(customColumns));
 }
 
 function loadFromLocalStorage() {
     const cachedCompanies = localStorage.getItem('screener_companies');
     const cachedCols = localStorage.getItem('screener_visible_cols');
     const cachedBatches = localStorage.getItem('screener_batches');
+    const cachedCustom = localStorage.getItem('screener_custom_cols');
     
     if (cachedCompanies) {
         accumulatedCompanies = JSON.parse(cachedCompanies);
+    }
+    
+    if (cachedCustom) {
+        customColumns = JSON.parse(cachedCustom);
     }
     
     if (cachedBatches) {
@@ -773,6 +869,173 @@ function loadFromLocalStorage() {
     renderTableHeaders();
     renderTable();
     updateStats();
+}
+
+/* ==========================================
+   CUSTOM COLUMNS / INDICATORS ENGINE
+   ========================================== */
+function openIndicatorModal() {
+    indicatorNameInput.value = '';
+    indicatorFormulaInput.value = '';
+    modalColumnsList.innerHTML = '';
+    
+    // Fill columns list with standard columns (i.e. those that are not custom indicators)
+    const standardCols = allColumns.filter(c => !customColumns.some(cc => cc.name === c));
+    
+    if (standardCols.length === 0) {
+        modalColumnsList.innerHTML = '<div style="color: var(--text-muted); font-size: 0.75rem; padding: 5px;">No source columns available yet. Extract some data first!</div>';
+    } else {
+        standardCols.forEach(col => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'col-btn';
+            btn.textContent = col;
+            btn.addEventListener('click', () => {
+                insertAtCursor(indicatorFormulaInput, `{${col}}`);
+            });
+            modalColumnsList.appendChild(btn);
+        });
+    }
+    
+    indicatorModal.classList.remove('hidden');
+}
+
+function closeIndicatorModal() {
+    indicatorModal.classList.add('hidden');
+}
+
+function insertAtCursor(input, text) {
+    const startPos = input.selectionStart;
+    const endPos = input.selectionEnd;
+    const val = input.value;
+    input.value = val.substring(0, startPos) + text + val.substring(endPos, val.length);
+    input.selectionStart = input.selectionEnd = startPos + text.length;
+    input.focus();
+}
+
+function evaluateFormula(formulaText, companyData) {
+    let expression = formulaText;
+    const tokenRegex = /\{([^}]+)\}/g;
+    expression = expression.replace(tokenRegex, (match, columnName) => {
+        const value = companyData[columnName];
+        if (value === undefined || value === null || value === '') {
+            return '0';
+        }
+        const cleaned = value.toString().replace(/,/g, '').trim();
+        const parsed = parseFloat(cleaned);
+        return isNaN(parsed) ? '0' : parsed.toString();
+    });
+    
+    const safeRegex = /^[0-9\+\-\*\/\(\)\.\s]+$/;
+    if (!safeRegex.test(expression)) {
+        return '';
+    }
+    
+    try {
+        const evalFn = new Function(`return (${expression});`);
+        const result = evalFn();
+        if (isNaN(result) || !isFinite(result)) {
+            return '';
+        }
+        return Number(result.toFixed(2)).toString();
+    } catch (e) {
+        return '';
+    }
+}
+
+function computeCustomColumns() {
+    accumulatedCompanies.forEach(comp => {
+        customColumns.forEach(cc => {
+            comp.data[cc.name] = evaluateFormula(cc.formula, comp.data);
+        });
+    });
+}
+
+function saveCustomIndicator() {
+    const name = indicatorNameInput.value.trim();
+    const formula = indicatorFormulaInput.value.trim();
+    
+    if (!name) {
+        showToast('Please enter an indicator name', 'danger');
+        return;
+    }
+    if (!formula) {
+        showToast('Please enter a formula', 'danger');
+        return;
+    }
+    
+    // Check if the indicator name conflicts with standard columns (excluding custom columns)
+    const standardCols = allColumns.filter(c => !customColumns.some(cc => cc.name === c));
+    if (standardCols.includes(name)) {
+        showToast(`An original column named "${name}" already exists`, 'danger');
+        return;
+    }
+    
+    // Check if custom column already exists
+    if (customColumns.some(cc => cc.name === name)) {
+        showToast(`A custom indicator named "${name}" already exists`, 'danger');
+        return;
+    }
+    
+    // Validate formula tokens against allColumns
+    let testExpression = formula;
+    const tokenRegex = /\{([^}]+)\}/g;
+    const tokens = [];
+    testExpression = testExpression.replace(tokenRegex, (match, colName) => {
+        tokens.push(colName);
+        return '1';
+    });
+    
+    const invalidTokens = tokens.filter(t => !allColumns.includes(t));
+    if (invalidTokens.length > 0) {
+        showToast(`Formula contains invalid columns: ${invalidTokens.join(', ')}`, 'danger');
+        return;
+    }
+    
+    const safeRegex = /^[0-9\+\-\*\/\(\)\.\s]+$/;
+    if (!safeRegex.test(testExpression)) {
+        showToast('Formula contains invalid characters. Only column names in braces, numbers, and basic operators (+ - * / ( ) .) are allowed.', 'danger');
+        return;
+    }
+    
+    try {
+        const evalFn = new Function(`return (${testExpression});`);
+        evalFn();
+    } catch (err) {
+        showToast(`Invalid formula syntax: ${err.message}`, 'danger');
+        return;
+    }
+    
+    // Add custom column
+    customColumns.push({ name, formula });
+    
+    // Recalculate, show, update, save
+    updateActiveColumns();
+    visibleColumns.add(name); // Auto-enable the new column
+    renderTableHeaders();
+    renderTable();
+    updateStats();
+    saveToLocalStorage();
+    
+    closeIndicatorModal();
+    showToast(`Custom indicator "${name}" created successfully!`, 'success');
+}
+
+function deleteCustomColumn(name) {
+    customColumns = customColumns.filter(cc => cc.name !== name);
+    
+    // Clean data from companies
+    accumulatedCompanies.forEach(comp => {
+        delete comp.data[name];
+    });
+    
+    visibleColumns.delete(name);
+    
+    updateActiveColumns();
+    renderTableHeaders();
+    renderTable();
+    updateStats();
+    saveToLocalStorage();
 }
 
 /* ==========================================
@@ -812,4 +1075,53 @@ function showToast(message, type = 'info') {
             setTimeout(() => toast.remove(), 300);
         }
     }, 4000);
+}
+
+/* ==========================================
+   BOOKMARKLET ENGINE
+   ========================================== */
+function initBookmarklet() {
+    const bookmarkletLink = document.getElementById('bookmarklet-link');
+    if (!bookmarkletLink) return;
+    
+    const currentUrl = window.location.href.split('?')[0];
+    const bookmarkletCode = `javascript:(function(){
+        const table = document.querySelector('table.data-table') || document.querySelector('table');
+        if(!table){
+            alert('No data table found on this page. Please run this bookmarklet while viewing a table on screener.in.');
+            return;
+        }
+        const html = document.documentElement.outerHTML;
+        
+        if ('${currentUrl}'.startsWith('file://')) {
+            navigator.clipboard.writeText(html).then(function() {
+                alert('Web browsers block opening local file:// paths from internet sites for security.\\n\\nHowever, the table HTML has been copied to your clipboard! Switch to your Screener Extractor tab and paste it (Ctrl+V or Cmd+V).');
+            }).catch(function(err) {
+                alert('Failed to automatically copy to clipboard. Please copy page source manually.');
+            });
+            return;
+        }
+        
+        const appWin = window.open('${currentUrl}', 'screener_extractor');
+        if(!appWin){
+            alert('Popup blocked! Please allow popups for screener.in to send data to the extractor.');
+            return;
+        }
+        
+        appWin.postMessage({type: 'SCREENER_HTML', html: html}, '*');
+        
+        const onMsg = (e) => {
+            if(e.source === appWin && e.data && e.data.type === 'READY'){
+                appWin.postMessage({type: 'SCREENER_HTML', html: html}, '*');
+                window.removeEventListener('message', onMsg);
+            }
+        };
+        window.addEventListener('message', onMsg);
+        
+        setTimeout(() => {
+            appWin.postMessage({type: 'SCREENER_HTML', html: html}, '*');
+        }, 1000);
+    })();`.replace(/\s+/g, ' ');
+    
+    bookmarkletLink.href = bookmarkletCode;
 }

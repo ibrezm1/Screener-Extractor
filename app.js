@@ -458,6 +458,18 @@ function parseScreenerHTML(htmlString) {
         }
     });
     
+    if (nameColIndex === -1) {
+        // Try to find which column in the body rows has the company link
+        for (let row of rows) {
+            const tds = row.querySelectorAll('td');
+            const linkIdx = Array.from(tds).findIndex(td => td.querySelector('a[href*="/company/"]'));
+            if (linkIdx !== -1) {
+                nameColIndex = linkIdx;
+                break;
+            }
+        }
+    }
+    
     // Default fallback indices if headers could not be fully parsed
     if (snoColIndex === -1 && headers.length > 0) snoColIndex = 0;
     if (nameColIndex === -1 && headers.length > 1) nameColIndex = 1;
@@ -470,28 +482,31 @@ function parseScreenerHTML(htmlString) {
         
         const companyId = row.getAttribute('data-row-company-id') || '';
         
+        // Find actual index of the company link in the current row's tds
+        let actualNameColIndex = Array.from(tds).findIndex(td => td.querySelector('a[href*="/company/"]'));
+        
+        // If not found, fall back to header's nameColIndex
+        if (actualNameColIndex === -1) {
+            actualNameColIndex = nameColIndex !== -1 ? nameColIndex : 1;
+        }
+        if (actualNameColIndex >= tds.length) {
+            actualNameColIndex = tds.length - 1;
+        }
+        
         let companyName = "";
         let companyUrl = "";
         
-        // Find anchor linking to the company profile page
-        const companyAnchor = row.querySelector('a[href*="/company/"]');
-        if (companyAnchor) {
-            companyName = cleanText(companyAnchor.textContent);
-            companyUrl = companyAnchor.getAttribute('href');
-            if (companyUrl.startsWith('/')) {
-                companyUrl = 'https://www.screener.in' + companyUrl;
-            }
-        }
-        
-        // Fallback using name index if anchor is missing or structured differently
-        if (!companyName && nameColIndex !== -1 && tds[nameColIndex]) {
-            companyName = cleanText(tds[nameColIndex].textContent);
-            const anchor = tds[nameColIndex].querySelector('a');
-            if (anchor) {
-                companyUrl = anchor.getAttribute('href');
+        // Extract name and url from the matched Name cell
+        if (tds[actualNameColIndex]) {
+            const companyAnchor = tds[actualNameColIndex].querySelector('a[href*="/company/"]');
+            if (companyAnchor) {
+                companyName = cleanText(companyAnchor.textContent);
+                companyUrl = companyAnchor.getAttribute('href');
                 if (companyUrl.startsWith('/')) {
                     companyUrl = 'https://www.screener.in' + companyUrl;
                 }
+            } else {
+                companyName = cleanText(tds[actualNameColIndex].textContent);
             }
         }
         
@@ -500,11 +515,17 @@ function parseScreenerHTML(htmlString) {
         
         const companyData = {};
         
-        tds.forEach((td, idx) => {
-            if (idx === snoColIndex || idx === nameColIndex) return;
+        // Calculate offset between the row's actual Name cell index and the header's Name cell index
+        const offset = nameColIndex !== -1 ? (actualNameColIndex - nameColIndex) : 0;
+        
+        headers.forEach((headerName, hIdx) => {
+            // Skip S.No and Name columns
+            if (hIdx === snoColIndex || hIdx === nameColIndex) return;
             
-            const headerName = headers[idx];
-            if (headerName) {
+            // Calculate corresponding td index in body row using the offset
+            const tdIdx = hIdx + offset;
+            const td = tds[tdIdx];
+            if (td) {
                 companyData[headerName] = cleanText(td.textContent);
             }
         });

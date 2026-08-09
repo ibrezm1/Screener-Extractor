@@ -146,6 +146,22 @@ function setupEventListeners() {
     downloadBtn.addEventListener('click', downloadCSV);
     clearTableBtn.addEventListener('click', confirmClearTable);
 
+    // Toggle fixed columns (S.No and Company Name) visibility
+    const toggleFixedColsBtn = document.getElementById('toggle-fixed-cols-btn');
+    const dataTable = document.getElementById('data-table');
+    if (toggleFixedColsBtn && dataTable) {
+        toggleFixedColsBtn.addEventListener('click', () => {
+            const isCollapsed = dataTable.classList.toggle('hide-fixed-cols');
+            if (isCollapsed) {
+                toggleFixedColsBtn.innerHTML = '<i class="ti ti-layout-sidebar-left-expand"></i><span>Expand Names</span>';
+                toggleFixedColsBtn.title = "Expand S.No and Name columns";
+            } else {
+                toggleFixedColsBtn.innerHTML = '<i class="ti ti-layout-sidebar-left-collapse"></i><span>Collapse Names</span>';
+                toggleFixedColsBtn.title = "Collapse S.No and Name columns";
+            }
+        });
+    }
+
     // Custom Indicator Actions
     addIndicatorBtn.addEventListener('click', openIndicatorModal);
     closeModalBtn.addEventListener('click', closeIndicatorModal);
@@ -373,6 +389,38 @@ async function openTijori(companyName) {
     } catch (err) {
         console.error('Tijori search error, using Google Search fallback...', err);
         window.open(`https://www.google.com/search?q=site:tijorifinance.com+${encodeURIComponent(companyName)}`, '_blank');
+    }
+}
+
+async function openET(companyName) {
+    // Get the first 5 characters of the company name and trim
+    const query = companyName.substring(0, 5).trim();
+    if (!query) {
+        showToast('Company name is empty', 'danger');
+        return;
+    }
+    
+    showToast(`Searching Economic Times for "${query}"...`, 'info');
+    
+    try {
+        const targetUrl = `https://etsearch.indiatimes.com/etspeeds/v1/search/results?platform=web&pageno=1&pagesize=8&query=${encodeURIComponent(query)}&category=stock`;
+        const response = await fetch(`https://express-js-on-vercel-sage-beta-50.vercel.app/api/proxy?url=${encodeURIComponent(targetUrl)}`);
+        const result = await response.json();
+        
+        if (result && result.buckets && result.buckets.length > 0 && result.buckets[0].items && result.buckets[0].items.length > 0) {
+            const firstResult = result.buckets[0].items[0];
+            if (firstResult && firstResult.pageLocation) {
+                window.open(firstResult.pageLocation, '_blank');
+                return;
+            }
+        }
+        
+        // Fallback if not found on ET
+        showToast(`Company "${query}" not found on Economic Times. Using Google Search fallback...`, 'warning');
+        window.open(`https://www.google.com/search?q=site:economictimes.indiatimes.com+${encodeURIComponent(companyName)}`, '_blank');
+    } catch (err) {
+        console.error('ET search error, using Google Search fallback...', err);
+        window.open(`https://www.google.com/search?q=site:economictimes.indiatimes.com+${encodeURIComponent(companyName)}`, '_blank');
     }
 }
 
@@ -915,6 +963,21 @@ function renderTable() {
                 openScanX(comp.url);
             });
             researchMenu.appendChild(scanxOpt);
+
+            // ET option
+            const etOpt = document.createElement('button');
+            etOpt.type = 'button';
+            etOpt.className = 'research-dropdown-item';
+            etOpt.innerHTML = '<i class="ti ti-news"></i> ET Search';
+            etOpt.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                researchMenu.classList.add('hidden');
+                const cell = researchWrapper.closest('.col-fixed-name');
+                if (cell) cell.classList.remove('active-dropdown');
+                openET(comp.name);
+            });
+            researchMenu.appendChild(etOpt);
 
             // Tijori option
             const tijoriOpt = document.createElement('button');

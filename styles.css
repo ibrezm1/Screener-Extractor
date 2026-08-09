@@ -707,6 +707,12 @@ th.col-fixed-name {
     border-right: 2px solid var(--border-color);
 }
 
+/* Collapse/hide state for fixed columns */
+.extractor-table.hide-fixed-cols .col-fixed-sno,
+.extractor-table.hide-fixed-cols .col-fixed-name {
+    display: none !important;
+}
+
 .col-actions {
     text-align: center;
     width: 80px;

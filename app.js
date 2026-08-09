@@ -344,18 +344,45 @@ async function openScanX(screenerUrl) {
     }
 }
 
-async function openNSE(screenerUrl, companyName) {
-    // Extract company code
-    const match = screenerUrl.match(/\/company\/([A-Z0-9_\-]+)/i);
-    if (!match || !match[1]) {
-        showToast('Could not extract company code for NSE search', 'danger');
+async function openTijori(companyName) {
+    // Get the first 5 characters of the company name and trim
+    const query = companyName.substring(0, 5).trim();
+    if (!query) {
+        showToast('Company name is empty', 'danger');
         return;
     }
-    const code = match[1].toUpperCase();
     
-    // If it's a numeric code, it's BSE-only (e.g. 511644). Use companyName for searching.
-    const isNumeric = /^\d+$/.test(code);
-    const searchTerm = isNumeric ? companyName : code;
+    showToast(`Searching Tijori for "${query}"...`, 'info');
+    
+    try {
+        const targetUrl = `https://www.tijorifinance.com/api/v1/ind/company_search/?q=${encodeURIComponent(query)}`;
+        const response = await fetch(`https://express-js-on-vercel-sage-beta-50.vercel.app/api/proxy?url=${encodeURIComponent(targetUrl)}`);
+        const result = await response.json();
+        
+        if (result && Array.isArray(result) && result.length > 0) {
+            const firstResult = result[0];
+            if (firstResult && firstResult.slug) {
+                window.open(`https://www.tijorifinance.com/company/${firstResult.slug}/`, '_blank');
+                return;
+            }
+        }
+        
+        // Fallback if not found on Tijori
+        showToast(`Company "${query}" not found on Tijori. Using Google Search fallback...`, 'warning');
+        window.open(`https://www.google.com/search?q=site:tijorifinance.com+${encodeURIComponent(companyName)}`, '_blank');
+    } catch (err) {
+        console.error('Tijori search error, using Google Search fallback...', err);
+        window.open(`https://www.google.com/search?q=site:tijorifinance.com+${encodeURIComponent(companyName)}`, '_blank');
+    }
+}
+
+async function openNSE(screenerUrl, companyName) {
+    // Get the first 4 characters of the company name and trim
+    const searchTerm = companyName.substring(0, 4).trim();
+    if (!searchTerm) {
+        showToast('Company name is empty', 'danger');
+        return;
+    }
     
     showToast(`Searching NSE for "${searchTerm}"...`, 'info');
     
@@ -365,18 +392,8 @@ async function openNSE(screenerUrl, companyName) {
         const result = await response.json();
         
         if (result && result.data && result.data.length > 0) {
-            let matchItem = null;
-            if (isNumeric) {
-                // Look for closest match in company names
-                const lowerName = companyName.toLowerCase();
-                matchItem = result.data.find(item => 
-                    item.companyName.toLowerCase().includes(lowerName) ||
-                    lowerName.includes(item.companyName.toLowerCase())
-                ) || result.data[0];
-            } else {
-                // Try exact symbol match first
-                matchItem = result.data.find(item => item.symbol.toUpperCase() === code) || result.data[0];
-            }
+            // Get the topmost search result
+            const matchItem = result.data[0];
             
             if (matchItem && matchItem.webUrl) {
                 // The webUrl is like "/get-quote/equity/SAVY/Savy-Infra-and-Logistics-Limited"
@@ -389,10 +406,10 @@ async function openNSE(screenerUrl, companyName) {
         
         // Fallback if scrip not found on NSE
         showToast(`Company "${searchTerm}" not found on NSE. Using Google Search fallback...`, 'warning');
-        window.open(`https://www.google.com/search?q=site:nseindia.com+${encodeURIComponent(searchTerm)}`, '_blank');
+        window.open(`https://www.google.com/search?q=site:nseindia.com+${encodeURIComponent(companyName)}`, '_blank');
     } catch (err) {
         console.error('NSE search error, using Google Search fallback...', err);
-        window.open(`https://www.google.com/search?q=site:nseindia.com+${encodeURIComponent(searchTerm)}`, '_blank');
+        window.open(`https://www.google.com/search?q=site:nseindia.com+${encodeURIComponent(companyName)}`, '_blank');
     }
 }
 
@@ -877,6 +894,21 @@ function renderTable() {
                 openScanX(comp.url);
             });
             researchMenu.appendChild(scanxOpt);
+
+            // Tijori option
+            const tijoriOpt = document.createElement('button');
+            tijoriOpt.type = 'button';
+            tijoriOpt.className = 'research-dropdown-item';
+            tijoriOpt.innerHTML = '<i class="ti ti-chart-pie"></i> Tijori Search';
+            tijoriOpt.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                researchMenu.classList.add('hidden');
+                const cell = researchWrapper.closest('.col-fixed-name');
+                if (cell) cell.classList.remove('active-dropdown');
+                openTijori(comp.name);
+            });
+            researchMenu.appendChild(tijoriOpt);
             
             // NSE option
             const nseOpt = document.createElement('button');
